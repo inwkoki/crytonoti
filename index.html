@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0c0f">
+<link rel="manifest" href="/manifest.json">
+<title>Binance TH · Spot Signal</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0c0f; --panel:#111418; --panel2:#161b22;
+  --border:#21262d; --border2:#30363d;
+  --buy:#0ecb81; --sell:#f6465d; --warn:#f0b90b; --blue:#3b9eff;
+  --text:#e6edf3; --muted:#586069; --muted2:#8b949e;
+  --mono:'IBM Plex Mono',monospace; --sans:'IBM Plex Sans Thai',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+
+/* TOPBAR */
+.topbar{
+  background:var(--panel);border-bottom:1px solid var(--border);
+  padding:0 20px;height:52px;display:flex;align-items:center;
+  justify-content:space-between;position:sticky;top:0;z-index:100;
+}
+.logo{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--warn);
+  display:flex;align-items:center;gap:8px;letter-spacing:1px;}
+.logo-icon{font-size:18px;}
+.topbar-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+
+/* NOTIFICATION BUTTON */
+.notif-btn{
+  display:flex;align-items:center;gap:6px;padding:6px 14px;
+  border-radius:6px;border:1px solid var(--border2);background:transparent;
+  color:var(--muted2);font-family:var(--mono);font-size:11px;cursor:pointer;
+  transition:all .2s;
+}
+.notif-btn:hover{border-color:var(--warn);color:var(--warn);}
+.notif-btn.on{background:rgba(14,203,129,.1);border-color:var(--buy);color:var(--buy);}
+.notif-btn.off{background:rgba(246,70,93,.1);border-color:var(--sell);color:var(--sell);}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.live-dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.live-dot.ok{background:var(--buy);animation:blink 2s infinite;}
+.live-dot.load{background:var(--warn);animation:blink .5s infinite;}
+.live-dot.err{background:var(--sell);}
+.status-txt{font-family:var(--mono);font-size:11px;color:var(--muted2);}
+
+/* NEXT CHECK TIMER */
+.timer-bar{
+  background:var(--panel2);border-bottom:1px solid var(--border);
+  padding:8px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.timer-item{font-family:var(--mono);font-size:11px;color:var(--muted2);}
+.timer-val{color:var(--warn);font-weight:700;}
+.progress-track{flex:1;max-width:200px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--warn);border-radius:2px;transition:width 1s linear;}
+
+/* SIGNAL SUMMARY BANNER */
+.summary-banner{
+  margin:16px 20px;border-radius:10px;padding:16px 20px;
+  border:1px solid var(--border2);background:var(--panel);
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;
+}
+.sum-box{text-align:center;}
+.sum-num{font-family:var(--mono);font-size:32px;font-weight:700;}
+.sum-label{font-size:11px;color:var(--muted2);margin-top:2px;text-transform:uppercase;letter-spacing:1px;}
+
+/* SECTION */
+.section{padding:0 20px 20px;}
+.sec-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 0 8px;border-bottom:1px solid var(--border);margin-bottom:12px;
+}
+.sec-title{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:1px;}
+.sec-count{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700;}
+
+/* COIN CARDS GRID */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
+
+/* COIN CARD */
+.coin-card{
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:14px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;
+}
+.coin-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+}
+.coin-card.buy::before{background:var(--buy);}
+.coin-card.sell::before{background:var(--sell);}
+.coin-card.wait::before{background:var(--border2);}
+.coin-card:hover{border-color:var(--border2);transform:translateY(-1px);}
+.coin-card.buy:hover{border-color:var(--buy);}
+.coin-card.sell:hover{border-color:var(--sell);}
+
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.coin-name-wrap{display:flex;align-items:center;gap:8px;}
+.coin-circle{
+  width:30px;height:30px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;
+}
+.coin-sym{font-family:var(--mono);font-size:14px;font-weight:700;color:#fff;}
+.coin-base{font-size:10px;color:var(--muted2);}
+.sig-badge{
+  font-family:var(--mono);font-size:11px;font-weight:700;
+  padding:3px 10px;border-radius:4px;
+}
+.sig-badge.buy{background:rgba(14,203,129,.15);color:var(--buy);}
+.sig-badge.sell{background:rgba(246,70,93,.15);color:var(--sell);}
+.sig-badge.wait{background:rgba(240,185,11,.1);color:var(--warn);}
+
+.card-price{font-family:var(--mono);font-size:16px;font-weight:700;margin-bottom:2px;}
+.card-change{font-family:var(--mono);font-size:11px;}
+
+.card-inds{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:10px;
+  padding-top:10px;border-top:1px solid var(--border);
+}
+.ind-mini{text-align:center;}
+.ind-mini-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.ind-mini-val{font-family:var(--mono);font-size:11px;font-weight:600;margin-top:1px;}
+
+.score-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:8px;}
+.score-bar-fill{height:100%;border-radius:2px;transition:width .6s ease;}
+
+/* TRADE INFO */
+.trade-info{
+  margin-top:10px;padding:10px;background:var(--panel2);border-radius:6px;
+  display:grid;grid-template-columns:1fr 1fr;gap:6px;
+}
+.ti-row{display:flex;flex-direction:column;gap:1px;}
+.ti-key{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.ti-val{font-family:var(--mono);font-size:11px;font-weight:600;}
+
+/* EMPTY */
+.empty-state{
+  padding:40px;text-align:center;color:var(--muted2);
+  font-family:var(--mono);font-size:12px;border:1px dashed var(--border2);
+  border-radius:8px;
+}
+
+/* LAST UPDATE */
+.last-update{
+  text-align:center;padding:12px;font-family:var(--mono);font-size:10px;color:var(--muted);
+  border-top:1px solid var(--border);
+}
+
+/* NOTIFICATION PERMISSION BANNER */
+.perm-banner{
+  margin:12px 20px;padding:14px 16px;
+  background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.3);
+  border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.perm-text{font-size:12px;color:var(--warn);line-height:1.6;}
+.perm-btn{
+  padding:7px 16px;background:var(--warn);color:#000;
+  font-family:var(--mono);font-size:11px;font-weight:700;
+  border:none;border-radius:5px;cursor:pointer;white-space:nowrap;
+}
+.perm-btn:hover{opacity:.85;}
+
+/* SPINNER */
+.spinner{
+  width:20px;height:20px;border:2px solid var(--border2);
+  border-top-color:var(--blue);border-radius:50%;
+  animation:spin .7s linear infinite;display:inline-block;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+@keyframes cardIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.coin-card{animation:cardIn .3s ease both;}
+
+@media(max-width:600px){
+  .summary-banner{grid-template-columns:1fr 1fr 1fr;}
+  .sum-num{font-size:22px;}
+  .cards-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <span class="logo-icon">📊</span>
+    BINANCE TH · SPOT SIGNAL
+  </div>
+  <div class="topbar-right">
+    <button class="notif-btn" id="notifBtn" onclick="toggleNotification()">
+      🔔 เปิดแจ้งเตือน
+    </button>
+    <span class="live-dot load" id="liveDot"></span>
+    <span class="status-txt" id="statusTxt">กำลังโหลด...</span>
+  </div>
+</div>
+
+<!-- NOTIFICATION PERMISSION BANNER -->
+<div class="perm-banner" id="permBanner" style="display:none;">
+  <div class="perm-text">
+    🔔 <strong>เปิดการแจ้งเตือน Chrome</strong> เพื่อรับสัญญาณ BUY/SELL ทุก 4 ชั่วโมงอัตโนมัติ<br>
+    แม้ปิดแท็บนี้ไปแล้ว ก็ยังได้รับแจ้งเตือนอยู่
+  </div>
+  <button class="perm-btn" onclick="requestPermission()">อนุญาตแจ้งเตือน</button>
+</div>
+
+<!-- TIMER BAR -->
+<div class="timer-bar">
+  <span class="timer-item">⏱ ตรวจถัดไป: <span class="timer-val" id="nextCheck">--:--:--</span></span>
+  <div class="progress-track">
+    <div class="progress-fill" id="progressFill" style="width:100%"></div>
+  </div>
+  <span class="timer-item">สแกน 4H · <span class="timer-val" id="coinCount">0</span> เหรียญ</span>
+  <span class="timer-item" id="lastCheckTime">ตรวจล่าสุด: --</span>
+</div>
+
+<!-- SUMMARY BANNER -->
+<div class="summary-banner" id="summaryBanner">
+  <div class="sum-box">
+    <div class="sum-num" style="color:var(--buy)" id="buyCount">--</div>
+    <div class="sum-label">🟢 ซื้อได้</div>
+  </div>
+  <div class="sum-box">
+    <div class="sum-num" style="color:var(--warn)" id="waitCount">--</div>
+    <div class="sum-label">🟡 รอสัญญาณ</div>
+  </div>
+  <div class="sum-box">
+    <div class="sum-num" style="color:var(--sell)" id="sellCount">--</div>
+    <div class="sum-label">🔴 ขายได้</div>
+  </div>
+</div>
+
+<!-- BUY SECTION -->
+<div class="section">
+  <div class="sec-header">
+    <span class="sec-title" style="color:var(--buy);">🟢 จังหวะซื้อ (BUY Signal)</span>
+    <span class="sec-count" id="buyCnt" style="background:rgba(14,203,129,.1);color:var(--buy);">0 เหรียญ</span>
+  </div>
+  <div class="cards-grid" id="buyGrid">
+    <div class="empty-state"><div class="spinner"></div><br><br>กำลังวิเคราะห์...</div>
+  </div>
+</div>
+
+<!-- SELL SECTION -->
+<div class="section">
+  <div class="sec-header">
+    <span class="sec-title" style="color:var(--sell);">🔴 ถือไว้แล้วควรขาย (SELL Signal)</span>
+    <span class="sec-count" id="sellCnt" style="background:rgba(246,70,93,.1);color:var(--sell);">0 เหรียญ</span>
+  </div>
+  <div class="cards-grid" id="sellGrid">
+    <div class="empty-state">กำลังวิเคราะห์...</div>
+  </div>
+</div>
+
+<!-- WAIT SECTION -->
+<div class="section">
+  <div class="sec-header">
+    <span class="sec-title" style="color:var(--muted2);">🟡 รอสัญญาณ (WAIT)</span>
+    <span class="sec-count" id="waitCnt" style="background:rgba(240,185,11,.08);color:var(--warn);">0 เหรียญ</span>
+  </div>
+  <div class="cards-grid" id="waitGrid">
+    <div class="empty-state">กำลังวิเคราะห์...</div>
+  </div>
+</div>
+
+<div class="last-update" id="lastUpdate">
+  ⚠️ เพื่อการศึกษาเท่านั้น — ไม่ใช่คำแนะนำทางการเงิน · อัปเดตทุก 4 ชั่วโมง
+</div>
+
+<script>
+const API = 'https://api.binance.com/api/v3';
+const THB_RATE = 33.5;
+const CHECK_MS = 4 * 60 * 60 * 1000; // 4 ชั่วโมง
+
+const COINS = [
+  { sym:'BTCUSDT',  label:'BTC',  color:'#f7931a', bg:'rgba(247,147,26,.2)' },
+  { sym:'ETHUSDT',  label:'ETH',  color:'#627eea', bg:'rgba(98,126,234,.2)' },
+  { sym:'BNBUSDT',  label:'BNB',  color:'#f0b90b', bg:'rgba(240,185,11,.2)' },
+  { sym:'XRPUSDT',  label:'XRP',  color:'#346aa9', bg:'rgba(52,106,169,.2)' },
+  { sym:'SOLUSDT',  label:'SOL',  color:'#9945ff', bg:'rgba(153,69,255,.2)' },
+  { sym:'ADAUSDT',  label:'ADA',  color:'#0055d4', bg:'rgba(0,85,212,.2)' },
+  { sym:'DOGEUSDT', label:'DOGE', color:'#c2a633', bg:'rgba(194,166,51,.2)' },
+  { sym:'DOTUSDT',  label:'DOT',  color:'#e6007a', bg:'rgba(230,0,122,.2)' },
+  { sym:'MATICUSDT',label:'MATIC',color:'#8247e5', bg:'rgba(130,71,229,.2)' },
+  { sym:'LINKUSDT', label:'LINK', color:'#2a5ada', bg:'rgba(42,90,218,.2)' },
+  { sym:'LTCUSDT',  label:'LTC',  color:'#bfbbbb', bg:'rgba(191,187,187,.2)' },
+  { sym:'AVAXUSDT', label:'AVAX', color:'#e84142', bg:'rgba(232,65,66,.2)' },
+  { sym:'UNIUSDT',  label:'UNI',  color:'#ff007a', bg:'rgba(255,0,122,.2)' },
+  { sym:'ATOMUSDT', label:'ATOM', color:'#6f7390', bg:'rgba(111,115,144,.2)' },
+  { sym:'TRXUSDT',  label:'TRX',  color:'#eb0029', bg:'rgba(235,0,41,.2)' },
+  { sym:'NEARUSDT', label:'NEAR', color:'#00c08b', bg:'rgba(0,192,139,.2)' },
+  { sym:'SANDUSDT', label:'SAND', color:'#04adef', bg:'rgba(4,173,239,.2)' },
+  { sym:'AXSUSDT',  label:'AXS',  color:'#0055d4', bg:'rgba(0,85,212,.2)' },
+  { sym:'SHIBUSDT', label:'SHIB', color:'#e07100', bg:'rgba(224,113,0,.2)' },
+  { sym:'FTMUSDT',  label:'FTM',  color:'#1969ff', bg:'rgba(25,105,255,.2)' },
+  { sym:'ARBUSDT',  label:'ARB',  color:'#28a0f0', bg:'rgba(40,160,240,.2)' },
+  { sym:'OPUSDT',   label:'OP',   color:'#ff0420', bg:'rgba(255,4,32,.2)' },
+  { sym:'INJUSDT',  label:'INJ',  color:'#00b4d8', bg:'rgba(0,180,216,.2)' },
+  { sym:'SUIUSDT',  label:'SUI',  color:'#4da2ff', bg:'rgba(77,162,255,.2)' },
+  { sym:'APTUSDT',  label:'APT',  color:'#2dd4bf', bg:'rgba(45,212,191,.2)' },
+];
+
+// ─── Indicator math ───
+function calcEMA(data,p){
+  const k=2/(p+1); let ema=data.slice(0,p).reduce((a,b)=>a+b,0)/p;
+  const r=new Array(p-1).fill(null); r.push(ema);
+  for(let i=p;i<data.length;i++){ema=data[i]*k+ema*(1-k);r.push(ema);}
+  return r;
+}
+function calcRSI(data,p=14){
+  const r=new Array(p).fill(null);let g=0,l=0;
+  for(let i=1;i<=p;i++){const d=data[i]-data[i-1];d>0?g+=d:l-=d;}
+  let ag=g/p,al=l/p;
+  r.push(al===0?100:100-100/(1+ag/al));
+  for(let i=p+1;i<data.length;i++){
+    const d=data[i]-data[i-1];
+    ag=(ag*(p-1)+Math.max(d,0))/p;al=(al*(p-1)+Math.max(-d,0))/p;
+    r.push(al===0?100:100-100/(1+ag/al));
+  }
+  return r;
+}
+function calcMACD(data){
+  const e12=calcEMA(data,12),e26=calcEMA(data,26);
+  const macd=e12.map((v,i)=>(v&&e26[i])?v-e26[i]:null);
+  const valid=macd.filter(v=>v!==null);
+  const sig=calcEMA(valid,9);
+  const off=macd.filter(v=>v===null).length;
+  return{macd,signal:new Array(off+valid.length-sig.length).fill(null).concat(sig)};
+}
+function calcBB(data,p=20,m=2){
+  return data.map((_,i)=>{
+    if(i<p-1)return null;
+    const sl=data.slice(i-p+1,i+1);
+    const mean=sl.reduce((a,b)=>a+b,0)/p;
+    const std=Math.sqrt(sl.reduce((a,b)=>a+(b-mean)**2,0)/p);
+    return{upper:mean+m*std,lower:mean-m*std,mid:mean};
+  });
+}
+function analyze(closes){
+  const last=closes[closes.length-1];
+  const rsiA=calcRSI(closes);const rsi=rsiA[rsiA.length-1];
+  const e20=calcEMA(closes,20);const e50=calcEMA(closes,50);const e200=calcEMA(closes,200);
+  const{macd,signal}=calcMACD(closes);
+  const bb=calcBB(closes);const bbl=bb[bb.length-1];
+  const macdV=macd[macd.length-1];const sigV=signal[signal.length-1];
+  const macdPrev=macd[macd.length-2];
+  let s=5;
+  if(rsi<30)s+=2;else if(rsi<45)s+=1;else if(rsi>70)s-=2;else if(rsi>60)s-=1;
+  if(last>e20[e20.length-1])s++;else s--;
+  if(last>e50[e50.length-1])s++;else s--;
+  if(macdV>sigV)s++;else s--;
+  if(macdV>(macdPrev||0))s+=.5;else s-=.5;
+  if(bbl&&last<bbl.lower)s++;else if(bbl&&last>bbl.upper)s--;
+  return{
+    score:Math.max(0,Math.min(10,Math.round(s))),
+    rsi,last,
+    ema20:e20[e20.length-1],ema50:e50[e50.length-1],
+    macdBull:macdV>sigV, bbPos:bbl?(last<bbl.lower?'below':last>bbl.upper?'above':'inside'):'--'
+  };
+}
+
+// ─── Format ───
+function fmtTHB(usd){
+  const t=usd*THB_RATE;
+  if(t>=1e6)return'฿'+(t/1e6).toFixed(2)+'M';
+  if(t>=1000)return'฿'+t.toLocaleString('th-TH',{maximumFractionDigits:0});
+  if(t>=1)return'฿'+t.toFixed(2);
+  return'฿'+t.toFixed(6);
+}
+
+// ─── Render Card ───
+function makeCard(coin,d,ticker,idx){
+  const chg=+ticker.priceChangePercent;
+  const vol=(+ticker.quoteVolume/1e6).toFixed(0);
+  const highs24=+ticker.highPrice, lows24=+ticker.lowPrice;
+  const sig=d.score>=7?'buy':d.score<=3?'sell':'wait';
+  const sigLabel=d.score>=7?'🟢 BUY':d.score<=3?'🔴 SELL':'🟡 WAIT';
+  const scoreColor=d.score>=7?'var(--buy)':d.score<=3?'var(--sell)':'var(--warn)';
+  const chgColor=chg>=0?'var(--buy)':'var(--sell)';
+
+  // S/R simple
+  const tp1=d.last*1.04, sl=d.last*0.97;
+
+  return `<div class="coin-card ${sig}" style="animation-delay:${idx*.04}s">
+    <div class="card-top">
+      <div class="coin-name-wrap">
+        <div class="coin-circle" style="background:${coin.bg};color:${coin.color}">${coin.label[0]}</div>
+        <div>
+          <div class="coin-sym" style="color:${coin.color}">${coin.label}</div>
+          <div class="coin-base">/ THB · Spot</div>
+        </div>
+      </div>
+      <span class="sig-badge ${sig}">${sigLabel}</span>
+    </div>
+    <div class="card-price" style="color:${chgColor}">${fmtTHB(d.last)}</div>
+    <div class="card-change" style="color:${chgColor}">${chg>=0?'▲ +':'▼ '}${chg.toFixed(2)}% (24h) &nbsp;·&nbsp; Vol $${vol}M</div>
+    <div class="score-bar">
+      <div class="score-bar-fill" style="width:${d.score*10}%;background:${scoreColor}"></div>
+    </div>
+    <div class="card-inds">
+      <div class="ind-mini">
+        <div class="ind-mini-label">RSI</div>
+        <div class="ind-mini-val" style="color:${d.rsi<30?'var(--buy)':d.rsi>70?'var(--sell)':'var(--muted2)'}">${d.rsi.toFixed(0)}</div>
+      </div>
+      <div class="ind-mini">
+        <div class="ind-mini-label">Score</div>
+        <div class="ind-mini-val" style="color:${scoreColor}">${d.score}/10</div>
+      </div>
+      <div class="ind-mini">
+        <div class="ind-mini-label">MACD</div>
+        <div class="ind-mini-val" style="color:${d.macdBull?'var(--buy)':'var(--sell)'}">${d.macdBull?'Bull':'Bear'}</div>
+      </div>
+    </div>
+    ${sig==='buy'?`
+    <div class="trade-info">
+      <div class="ti-row">
+        <span class="ti-key">Entry</span>
+        <span class="ti-val" style="color:var(--buy)">${fmtTHB(d.last)}</span>
+      </div>
+      <div class="ti-row">
+        <span class="ti-key">TP (+4%)</span>
+        <span class="ti-val" style="color:var(--buy)">${fmtTHB(tp1)}</span>
+      </div>
+      <div class="ti-row">
+        <span class="ti-key">Stop Loss (-3%)</span>
+        <span class="ti-val" style="color:var(--sell)">${fmtTHB(sl)}</span>
+      </div>
+      <div class="ti-row">
+        <span class="ti-key">R:R</span>
+        <span class="ti-val" style="color:var(--warn)">1 : 1.3</span>
+      </div>
+    </div>`:sig==='sell'?`
+    <div class="trade-info">
+      <div class="ti-row">
+        <span class="ti-key">สัญญาณ</span>
+        <span class="ti-val" style="color:var(--sell)">ขาย / ลดพอร์ต</span>
+      </div>
+      <div class="ti-row">
+        <span class="ti-key">RSI</span>
+        <span class="ti-val" style="color:var(--sell)">${d.rsi.toFixed(0)} — ${d.rsi>70?'Overbought':'Weak'}</span>
+      </div>
+      <div class="ti-row">
+        <span class="ti-key">EMA50</span>
+        <span class="ti-val" style="color:var(--sell)">${d.last<d.ema50?'ราคาต่ำกว่า':'ใกล้แนวต้าน'}</span>
+      </div>
+      <div class="ti-row">
+        <span class="ti-key">แนะนำ</span>
+        <span class="ti-val" style="color:var(--warn)">Partial sell 50%</span>
+      </div>
+    </div>`:''}
+  </div>`;
+}
+
+// ─── Timer countdown ───
+let nextCheckAt = null;
+function startTimer(ms){
+  nextCheckAt = Date.now() + ms;
+  const tick=()=>{
+    if(!nextCheckAt)return;
+    const left=Math.max(0,nextCheckAt-Date.now());
+    const h=Math.floor(left/3600000);
+    const m=Math.floor((left%3600000)/60000);
+    const s=Math.floor((left%60000)/1000);
+    document.getElementById('nextCheck').textContent=
+      `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    const pct=(left/ms)*100;
+    document.getElementById('progressFill').style.width=pct+'%';
+  };
+  tick();
+  setInterval(tick,1000);
+}
+
+// ─── Main scan ───
+async function runScan(){
+  document.getElementById('liveDot').className='live-dot load';
+  document.getElementById('statusTxt').textContent='กำลังสแกน...';
+  document.getElementById('coinCount').textContent=COINS.length;
+
+  const results=[];
+  await Promise.all(COINS.map(async(coin,i)=>{
+    try{
+      const[kl,tk]=await Promise.all([
+        fetch(`${API}/klines?symbol=${coin.sym}&interval=4h&limit=120`).then(r=>r.json()),
+        fetch(`${API}/ticker/24hr?symbol=${coin.sym}`).then(r=>r.json())
+      ]);
+      const closes=kl.map(k=>+k[4]);
+      const d=analyze(closes);
+      results.push({coin,d,ticker:tk,sym:coin.sym});
+    }catch(e){/*skip*/}
+  }));
+
+  results.sort((a,b)=>b.d.score-a.d.score);
+  const buys=results.filter(r=>r.d.score>=7);
+  const sells=results.filter(r=>r.d.score<=3).sort((a,b)=>a.d.score-b.d.score);
+  const waits=results.filter(r=>r.d.score>3&&r.d.score<7);
+
+  // Summary
+  document.getElementById('buyCount').textContent=buys.length;
+  document.getElementById('sellCount').textContent=sells.length;
+  document.getElementById('waitCount').textContent=waits.length;
+  document.getElementById('buyCnt').textContent=`${buys.length} เหรียญ`;
+  document.getElementById('sellCnt').textContent=`${sells.length} เหรียญ`;
+  document.getElementById('waitCnt').textContent=`${waits.length} เหรียญ`;
+
+  const render=(arr,elId)=>{
+    const el=document.getElementById(elId);
+    if(arr.length===0){
+      const label=elId==='buyGrid'?'ไม่มีสัญญาณซื้อรอบนี้':elId==='sellGrid'?'ไม่มีสัญญาณขาย':'ไม่มี';
+      el.innerHTML=`<div class="empty-state">🟡 ${label}</div>`;
+    } else {
+      el.innerHTML=arr.map((r,i)=>makeCard(r.coin,r.d,r.ticker,i)).join('');
+    }
+  };
+  render(buys,'buyGrid');
+  render(sells,'sellGrid');
+  render(waits,'waitGrid');
+
+  // Status
+  document.getElementById('liveDot').className='live-dot ok';
+  const now=new Date();
+  const timeStr=now.toLocaleTimeString('th-TH');
+  document.getElementById('statusTxt').textContent='Live · '+timeStr;
+  document.getElementById('lastCheckTime').textContent='ตรวจล่าสุด: '+timeStr;
+  document.getElementById('lastUpdate').textContent=
+    `⚠️ เพื่อการศึกษาเท่านั้น — ข้อมูล Binance API · อัปเดต: ${now.toLocaleString('th-TH')}`;
+
+  // Send to SW
+  if(navigator.serviceWorker.controller){
+    navigator.serviceWorker.controller.postMessage('CHECK_NOW');
+  }
+  startTimer(CHECK_MS);
+}
+
+// ─── Push Notification ───
+async function registerSW(){
+  if(!('serviceWorker' in navigator)){return;}
+  try{
+    const reg=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+    console.log('SW registered');
+    navigator.serviceWorker.addEventListener('message',e=>{
+      if(e.data&&e.data.type==='SIGNAL_UPDATE') runScan();
+    });
+  }catch(e){console.warn('SW failed:',e);}
+}
+
+async function requestPermission(){
+  const perm=await Notification.requestPermission();
+  updateNotifBtn(perm);
+  document.getElementById('permBanner').style.display='none';
+  if(perm==='granted'){
+    await registerSW();
+    runScan();
+  }
+}
+
+function updateNotifBtn(perm){
+  const btn=document.getElementById('notifBtn');
+  if(perm==='granted'){
+    btn.className='notif-btn on';
+    btn.textContent='🔔 แจ้งเตือน: เปิดอยู่';
+  } else if(perm==='denied'){
+    btn.className='notif-btn off';
+    btn.textContent='🔕 ถูกบล็อก (ตั้งค่าเบราว์เซอร์)';
+  } else {
+    btn.className='notif-btn';
+    btn.textContent='🔔 เปิดแจ้งเตือน';
+  }
+}
+
+async function toggleNotification(){
+  const perm=Notification.permission;
+  if(perm==='granted'){
+    // Show instructions to turn off
+    alert('ปิดการแจ้งเตือน:\nคลิกที่ 🔒 หน้า URL bar → Notifications → Block');
+  } else {
+    await requestPermission();
+  }
+}
+
+// ─── Init ───
+window.addEventListener('DOMContentLoaded',async()=>{
+  const perm=Notification.permission;
+  updateNotifBtn(perm);
+  if(perm==='default'){
+    document.getElementById('permBanner').style.display='flex';
+  } else if(perm==='granted'){
+    await registerSW();
+  }
+  runScan();
+  setInterval(runScan, CHECK_MS);
+});
+</script>
+</body>
+</html>
